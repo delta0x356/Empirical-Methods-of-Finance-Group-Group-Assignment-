@@ -1,5 +1,5 @@
 ************************************************************
-* Assignment for Empirical Methods in Finance – Christoph Herler, 22.09.2025
+* Assignment for Empirical Methods in Finance – Christoph Herler, Darius Richter, Leonard   22.09.2025
 ************************************************************
 * Presets
 
@@ -248,7 +248,6 @@ regress userchg lag_topmover list c.lag_topmover#c.list mktcap
 * Task 7 – Interpretation
 ************************************************************
 
-* ---- Notes for interpretation in your PDF ----
 * β1  = effect of being a lagged top mover BEFORE Aug 1, 2019.
 * β2  = shift in baseline user change after Aug 1, 2019 (when the list existed).
 * β3  = additional effect of being a lagged top mover AFTER Aug 1, 2019
