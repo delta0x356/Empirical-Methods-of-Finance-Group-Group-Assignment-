@@ -10,7 +10,6 @@ This repository contains code for analyzing attention-driven trading behavior am
 
 * **Source** : Daily Robinhood user holdings (mid-2018 to mid-2020)
 * **Size** : 86.4 MB
-* **Coverage** : Market-wide sample matched with CRSP price data
 
 ## Key Features
 
