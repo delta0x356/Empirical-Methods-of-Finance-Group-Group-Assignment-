@@ -3,7 +3,7 @@
        log:  /Users/delta/Documents/GitHub/Empirical-Methods-of-Finance-Group-Grou
 > p-Assignment-/empirical_finance_assignment.log
   log type:  text
- opened on:  19 Sep 2025, 00:13:33
+ opened on:  19 Sep 2025, 16:21:28
 
 . 
 . * 1. Loading data
@@ -382,116 +382,396 @@ topmover |    mktcap       ret    absret   userchg  userra~o
 
 . 
 . ************************************************************
-. * 10f–h. Regressions on lagged top mover status
+. * Test for heteroskedasticity before running main regressions
 . ************************************************************
 . 
-. * ----f.) Model 1: user change on lagged top mover ----
-. regress userchg lag_topmover
+. display ""
 
-      Source |       SS           df       MS      Number of obs   = 1,742,651
--------------+----------------------------------   F(1, 1742649)   =  17826.45
-       Model |  1.9039e+09         1  1.9039e+09   Prob > F        =    0.0000
-    Residual |  1.8612e+11 1,742,649  106803.633   R-squared       =    0.0101
--------------+----------------------------------   Adj R-squared   =    0.0101
-       Total |  1.8803e+11 1,742,650   107896.12   Root MSE        =    326.81
 
-------------------------------------------------------------------------------
-     userchg | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
--------------+----------------------------------------------------------------
-lag_topmover |   420.3837   3.148571   133.52   0.000     414.2126    426.5547
-       _cons |   12.31046   .2483378    49.57   0.000     11.82373     12.7972
-------------------------------------------------------------------------------
+. display "************************************************************"
+************************************************************
+
+. display "* HETEROSKEDASTICITY TESTING"
+* HETEROSKEDASTICITY TESTING
+
+. display "************************************************************"
+************************************************************
 
 . 
-. * Interpretation:
-. * Coefficient on lag_topmover = 420.38
-. *   -> On average, if a stock was a top mover yesterday,
-. *      the number of RH users holding it increases on average c.p. by about
-. *      420 on the next day, compared to non-top movers.
-. * p-value < 0.001
-. *   -> Highly significant; we reject the null of no effect.
-. * t-statistic = 133.52
-. *   -> Far above 1.96, confirming strong significance.
-. * 95% confidence interval = [414.21 , 426.55]
-. *   -> We are 95% confident the true effect lies inside this range.
+. * Run initial regression to test for heteroskedasticity
+. quietly regress userchg lag_topmover
+
+. 
+. * Breusch-Pagan test for heteroskedasticity
+. estat hettest
+
+Breusch–Pagan/Cook–Weisberg test for heteroskedasticity 
+Assumption: Normal error terms
+Variable: Fitted values of userchg
+
+H0: Constant variance
+
+    chi2(1) = 1.21e+07
+Prob > chi2 =   0.0000
+
+. local bp_pvalue = r(p)
+
+. display "Breusch-Pagan test p-value: " `bp_pvalue'
+Breusch-Pagan test p-value: 0
+
+. 
+. * White test for heteroskedasticity  
+. estat imtest, white
+
+White's test
+H0: Homoskedasticity
+Ha: Unrestricted heteroskedasticity
+
+    chi2(1) = 3540.00
+Prob > chi2 =  0.0000
+
+Cameron & Trivedi's decomposition of IM-test
+
+--------------------------------------------------
+              Source |       chi2     df         p
+---------------------+----------------------------
+  Heteroskedasticity |    3539.98      1    0.0000
+            Skewness |    1637.84      1    0.0000
+            Kurtosis | -685897.80      1    1.0000
+---------------------+----------------------------
+               Total | -680719.97      3    1.0000
+--------------------------------------------------
+
+. local white_pvalue = r(p)
+
+. display "White test p-value: " `white_pvalue'
+White test p-value: 0
+
+. 
+. * Decision rule: if either test rejects at 5% level, use robust standard errors
+. if `bp_pvalue' < 0.05 | `white_pvalue' < 0.05 {
+.     local use_robust = 1
+.     display ""
+
+.     display "*** HETEROSKEDASTICITY DETECTED ***"
+*** HETEROSKEDASTICITY DETECTED ***
+.     display "At least one test rejects homoskedasticity at 5% level"
+At least one test rejects homoskedasticity at 5% level
+.     display "Using robust standard errors for all regressions"
+Using robust standard errors for all regressions
+.     display ""
+
+. }
+
+. else {
+.     local use_robust = 0
+.     display ""
+.     display "*** NO STRONG EVIDENCE OF HETEROSKEDASTICITY ***"
+.     display "Both tests fail to reject homoskedasticity at 5% level"
+.     display "Using standard OLS standard errors"
+.     display ""
+. }
+
+. 
+. ************************************************************
+. * 5f–h. Regressions on lagged top mover status
+. ************************************************************
+. 
+. display "************************************************************"
+************************************************************
+
+. display "* MAIN REGRESSION ANALYSIS"
+* MAIN REGRESSION ANALYSIS
+
+. display "************************************************************"
+************************************************************
+
+. 
+. * ----f.) Model 1: user change on lagged top mover ----
+. display ""
+
+
+. display "*** MODEL 1: User Change on Lagged Top Mover ***"
+*** MODEL 1: User Change on Lagged Top Mover ***
+
+. 
+. if `use_robust' == 1 {
+.     regress userchg lag_topmover, robust
+
+Linear regression                               Number of obs     =  1,742,651
+                                                F(1, 1742649)     =     372.61
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0101
+                                                Root MSE          =     326.81
+
+------------------------------------------------------------------------------
+             |               Robust
+     userchg | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+lag_topmover |   420.3837   21.77816    19.30   0.000     377.6992    463.0681
+       _cons |   12.31046   .2085034    59.04   0.000      11.9018    12.71912
+------------------------------------------------------------------------------
+.     display "Note: Using robust standard errors due to heteroskedasticity"
+Note: Using robust standard errors due to heteroskedasticity
+. }
+
+. else {
+.     regress userchg lag_topmover
+.     display "Note: Using standard OLS standard errors"
+. }
+
+. 
+. * Store results for interpretation
+. local coef_lag = _b[lag_topmover]
+
+. local se_lag = _se[lag_topmover]
+
+. local t_lag = _b[lag_topmover]/_se[lag_topmover]
+
+. local p_lag = 2*ttail(e(df_r), abs(`t_lag'))
+
+. local ci_lower = `coef_lag' - invttail(e(df_r), 0.025) * `se_lag'
+
+. local ci_upper = `coef_lag' + invttail(e(df_r), 0.025) * `se_lag'
+
+. 
+. display ""
+
+
+. display "Interpretation:"
+Interpretation:
+
+. display "Coefficient on lag_topmover = " %9.2f `coef_lag'
+Coefficient on lag_topmover =    420.38
+
+. display "  -> On average, if a stock was a top mover yesterday,"
+  -> On average, if a stock was a top mover yesterday,
+
+. display "     the number of RH users holding it increases by about"
+     the number of RH users holding it increases by about
+
+. display "     " %9.0f `coef_lag' " on the next day, compared to non-top movers."
+           420 on the next day, compared to non-top movers.
+
+. display "p-value = " %9.3f `p_lag'
+p-value =     0.000
+
+. if `p_lag' < 0.001 {
+.     display "  -> Highly significant; we reject the null of no effect."
+  -> Highly significant; we reject the null of no effect.
+. }
+
+. else if `p_lag' < 0.05 {
+.     display "  -> Significant at 5% level."
+. }
+
+. else {
+.     display "  -> Not statistically significant at conventional levels."
+. }
+
+. display "t-statistic = " %9.2f `t_lag'
+t-statistic =     19.30
+
+. display "95% confidence interval = [" %9.2f `ci_lower' ", " %9.2f `ci_upper' "]"
+95% confidence interval = [   377.70,    463.07]
+
 . 
 . ************************************************************
 . 
 . * ----g.) Model 2: user ratio on lagged top mover ----
-. regress userratio lag_topmover
+. display ""
 
-      Source |       SS           df       MS      Number of obs   = 1,737,406
--------------+----------------------------------   F(1, 1737404)   =   8359.98
-       Model |  538.560925         1  538.560925   Prob > F        =    0.0000
-    Residual |  111925.812 1,737,404  .064421293   R-squared       =    0.0048
--------------+----------------------------------   Adj R-squared   =    0.0048
-       Total |  112464.373 1,737,405  .064731236   Root MSE        =    .25381
 
-------------------------------------------------------------------------------
-   userratio | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
--------------+----------------------------------------------------------------
-lag_topmover |   .2245127   .0024555    91.43   0.000        .2197    .2293253
-       _cons |   1.005283   .0001932  5204.47   0.000     1.004904    1.005661
-------------------------------------------------------------------------------
+. display "*** MODEL 2: User Ratio on Lagged Top Mover ***"
+*** MODEL 2: User Ratio on Lagged Top Mover ***
 
 . 
-. * Interpretation:
-. * Coefficient on lag_topmover = 0.225
-. *   -> If a stock was a top mover on the previous day,
-. *      the number of RH users on the following day is on average 22.5% higher
-. *      than on day before (user ratio increases by 0.225).
-. * p-value < 0.001
-. *   -> Highly significant.
-. * t-statistic = 91.43
-. *   -> Well above 1.96, confirming strong significance.
-. * 95% confidence interval = [0.220 , 0.229]
-. *   -> Effect is positive and precisely estimated.
+. if `use_robust' == 1 {
+.     regress userratio lag_topmover, robust
+
+Linear regression                               Number of obs     =  1,737,406
+                                                F(1, 1737404)     =     333.90
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0048
+                                                Root MSE          =     .25381
+
+------------------------------------------------------------------------------
+             |               Robust
+   userratio | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+lag_topmover |   .2245127   .0122866    18.27   0.000     .2004314     .248594
+       _cons |   1.005283    .000178  5647.05   0.000     1.004934    1.005632
+------------------------------------------------------------------------------
+.     display "Note: Using robust standard errors due to heteroskedasticity"
+Note: Using robust standard errors due to heteroskedasticity
+. }
+
+. else {
+.     regress userratio lag_topmover
+.     display "Note: Using standard OLS standard errors"
+. }
+
+. 
+. * Store results for interpretation
+. local coef_lag2 = _b[lag_topmover]
+
+. local se_lag2 = _se[lag_topmover]
+
+. local t_lag2 = _b[lag_topmover]/_se[lag_topmover]
+
+. local p_lag2 = 2*ttail(e(df_r), abs(`t_lag2'))
+
+. 
+. display ""
+
+
+. display "Interpretation:"
+Interpretation:
+
+. display "Coefficient on lag_topmover = " %9.3f `coef_lag2'
+Coefficient on lag_topmover =     0.225
+
+. display "  -> If a stock was a top mover on the previous day,"
+  -> If a stock was a top mover on the previous day,
+
+. display "     the number of RH users on the following day is on average"
+     the number of RH users on the following day is on average
+
+. display "     " %5.1f `coef_lag2'*100 "% higher than the day before."
+      22.5% higher than the day before.
+
+. display "p-value = " %9.3f `p_lag2'
+p-value =     0.000
+
+. if `p_lag2' < 0.001 {
+.     display "  -> Highly significant."
+  -> Highly significant.
+. }
+
+. else if `p_lag2' < 0.05 {
+.     display "  -> Significant at 5% level."
+. }
+
 . 
 . ************************************************************
 . 
 . * ----h.) Model 3: user change on lagged top mover + market capitalization ----
-. regress userchg lag_topmover mktcap
+. display ""
 
-      Source |       SS           df       MS      Number of obs   = 1,742,651
--------------+----------------------------------   F(2, 1742648)   =  21700.86
-       Model |  4.5691e+09         2  2.2845e+09   Prob > F        =    0.0000
-    Residual |  1.8346e+11 1,742,648  105274.322   R-squared       =    0.0243
--------------+----------------------------------   Adj R-squared   =    0.0243
-       Total |  1.8803e+11 1,742,650   107896.12   Root MSE        =    324.46
 
-------------------------------------------------------------------------------
-     userchg | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
--------------+----------------------------------------------------------------
-lag_topmover |   427.5265    3.12627   136.75   0.000     421.3991    433.6539
-      mktcap |   .0009128   5.74e-06   159.11   0.000     .0009016    .0009241
-       _cons |   4.397488   .2515192    17.48   0.000     3.904519    4.890457
-------------------------------------------------------------------------------
+. display "*** MODEL 3: User Change with Market Cap Control ***"
+*** MODEL 3: User Change with Market Cap Control ***
 
 . 
-. * Interpretation:
-. * Coefficient on lag_topmover = 427.53
-. *   -> Including market capitalization raises the estimated effect
-. *      from about 420 (Model 1) to roughly 428.
-. * Coefficient on mktcap = 0.00091
-. *   -> Each extra $1 million of market capitalization is associated
-. *      with about 0.9 more RH users per day.
-. * p-values < 0.001 for both predictors
-. *   -> Both effects are highly significant.
-. * 95% confidence interval for lag_topmover = [421.40 , 433.65]
-. *   -> Strong and precise positive effect.
+. if `use_robust' == 1 {
+.     regress userchg lag_topmover mktcap, robust
+
+Linear regression                               Number of obs     =  1,742,651
+                                                F(2, 1742648)     =     359.72
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0243
+                                                Root MSE          =     324.46
+
+------------------------------------------------------------------------------
+             |               Robust
+     userchg | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+lag_topmover |   427.5265   21.77846    19.63   0.000     384.8415    470.2115
+      mktcap |   .0009128   .0000487    18.76   0.000     .0008175    .0010082
+       _cons |   4.397488   .3960764    11.10   0.000     3.621192    5.173784
+------------------------------------------------------------------------------
+.     display "Note: Using robust standard errors due to heteroskedasticity"
+Note: Using robust standard errors due to heteroskedasticity
+. }
+
+. else {
+.     regress userchg lag_topmover mktcap
+.     display "Note: Using standard OLS standard errors"
+. }
+
+. 
+. * Store results for interpretation
+. local coef_lag3 = _b[lag_topmover]
+
+. local coef_mktcap = _b[mktcap]
+
+. local se_lag3 = _se[lag_topmover]
+
+. local ci_lower3 = `coef_lag3' - invttail(e(df_r), 0.025) * `se_lag3'
+
+. local ci_upper3 = `coef_lag3' + invttail(e(df_r), 0.025) * `se_lag3'
+
+. 
+. display ""
+
+
+. display "Interpretation:"
+Interpretation:
+
+. display "Coefficient on lag_topmover = " %9.2f `coef_lag3'
+Coefficient on lag_topmover =    427.53
+
+. display "  -> Including market capitalization changes the estimated effect"
+  -> Including market capitalization changes the estimated effect
+
+. display "     from about " %9.0f `coef_lag' " (Model 1) to " %9.0f `coef_lag3' "
+>  (Model 3)."
+     from about       420 (Model 1) to       428 (Model 3).
+
+. display "Coefficient on mktcap = " %12.5f `coef_mktcap'
+Coefficient on mktcap =      0.00091
+
+. display "  -> Each extra $1 million of market capitalization is associated"
+  -> Each extra $1 million of market capitalization is associated
+
+. display "     with about " %5.1f `coef_mktcap'*1000 " more RH users per day."
+     with about   0.9 more RH users per day.
+
+. display "95% confidence interval for lag_topmover = [" %9.2f `ci_lower3' ", " %9
+> .2f `ci_upper3' "]"
+95% confidence interval for lag_topmover = [   384.84,    470.21]
+
 . 
 . ************************************************************
 . * Economic meaning for Task 5(h)
 . ************************************************************
-. * After controlling for firm size, the effect of being a top mover
-. * becomes larger. This indicates that top movers are on average
-. * smaller than typical firms. The univariate model therefore
-. * underestimated the true effect.
-. * Correct multiple-choice statement:
-. *   (i) The univariate model underestimates the effect of being a
-. *       top mover on the change in RH users. This is because top
-. *       movers are smaller than the average company. -> CORRECT
-. ************************************************************
+. display ""
+
+
+. display "*** ECONOMIC INTERPRETATION ***"
+*** ECONOMIC INTERPRETATION ***
+
+. 
+. if `coef_lag3' > `coef_lag' {
+.     display "After controlling for firm size, the effect of being a top mover"
+After controlling for firm size, the effect of being a top mover
+.     display "becomes LARGER (" %9.2f `coef_lag3' " vs " %9.2f `coef_lag' ")."
+becomes LARGER (   427.53 vs    420.38).
+.     display "This indicates that top movers are on average SMALLER than typical 
+> firms."
+This indicates that top movers are on average SMALLER than typical firms.
+.     display "The univariate model therefore UNDERESTIMATED the true effect."
+The univariate model therefore UNDERESTIMATED the true effect.
+.     display ""
+
+.     display "Correct multiple-choice statement:"
+Correct multiple-choice statement:
+.     display "  (i) The univariate model underestimates the effect of being a"
+  (i) The univariate model underestimates the effect of being a
+.     display "      top mover on the change in RH users. This is because top"
+      top mover on the change in RH users. This is because top
+.     display "      movers are smaller than the average company. -> CORRECT"
+      movers are smaller than the average company. -> CORRECT
+. }
+
+. else {
+.     display "After controlling for firm size, the effect of being a top mover"
+.     display "becomes SMALLER (" %9.2f `coef_lag3' " vs " %9.2f `coef_lag' ")."
+.     display "This indicates that top movers are on average LARGER than typical f
+> irms."
+.     display "The univariate model therefore OVERESTIMATED the true effect."
+. }
+
 . 
 . ************************************************************
 . * Task 6 – Top Movers feature introduction (Aug 1, 2019)
@@ -501,47 +781,149 @@ lag_topmover |   427.5265    3.12627   136.75   0.000     421.3991    433.6539
 . gen byte list = date >= mdy(8,1,2019)
 
 . 
+. display ""
+
+
+. display "*** DIFFERENCE-IN-DIFFERENCES MODEL ***"
+*** DIFFERENCE-IN-DIFFERENCES MODEL ***
+
+. display "Feature introduction: August 1, 2019"
+Feature introduction: August 1, 2019
+
+. 
 . * Estimate the model:
 . *    userchg = β0 + β1 lag_topmover + β2 list + β3 lag_topmover × list + β4 mktc
 > ap + ε
-. regress userchg lag_topmover list c.lag_topmover#c.list mktcap
+. if `use_robust' == 1 {
+.     regress userchg lag_topmover list c.lag_topmover#c.list mktcap, robust
 
-      Source |       SS           df       MS      Number of obs   = 1,742,651
--------------+----------------------------------   F(4, 1742646)   =  14093.33
-       Model |  5.8919e+09         4  1.4730e+09   Prob > F        =    0.0000
-    Residual |  1.8213e+11 1,742,646  104515.371   R-squared       =    0.0313
--------------+----------------------------------   Adj R-squared   =    0.0313
-       Total |  1.8803e+11 1,742,650   107896.12   Root MSE        =    323.29
+Linear regression                               Number of obs     =  1,742,651
+                                                F(4, 1742646)     =     622.64
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0313
+                                                Root MSE          =     323.29
 
 ---------------------------------------------------------------------------------
-        userchg | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+                |               Robust
+        userchg | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
 ----------------+----------------------------------------------------------------
-   lag_topmover |   138.6204   4.210243    32.92   0.000     130.3685    146.8723
-           list |      19.03   .4915624    38.71   0.000     18.06655    19.99344
+   lag_topmover |   138.6204   8.622806    16.08   0.000       121.72    155.5208
+           list |      19.03   .4291263    44.35   0.000     18.18893    19.87107
                 |
  c.lag_topmover#|
-         c.list |   639.9109   6.257523   102.26   0.000     627.6463    652.1754
+         c.list |   639.9109   47.25208    13.54   0.000     547.2984    732.5233
                 |
-         mktcap |   .0009139   5.72e-06   159.88   0.000     .0009027    .0009251
-          _cons |  -4.834506   .3459101   -13.98   0.000    -5.512478   -4.156534
+         mktcap |   .0009139   .0000486    18.80   0.000     .0008186    .0010092
+          _cons |  -4.834506   .4341091   -11.14   0.000    -5.685345   -3.983667
 ---------------------------------------------------------------------------------
+.     display "Note: Using robust standard errors due to heteroskedasticity"
+Note: Using robust standard errors due to heteroskedasticity
+. }
+
+. else {
+.     regress userchg lag_topmover list c.lag_topmover#c.list mktcap
+.     display "Note: Using standard OLS standard errors"
+. }
 
 . 
 . ************************************************************
 . * Task 7 – Interpretation
 . ************************************************************
 . 
-. * ---- Notes for interpretation in your PDF ----
-. * β1  = effect of being a lagged top mover BEFORE Aug 1, 2019.
-. * β2  = shift in baseline user change after Aug 1, 2019 (when the list existed).
-. * β3  = additional effect of being a lagged top mover AFTER Aug 1, 2019
-. *       (i.e. the difference-in-differences effect).
-. * β4  = effect of market capitalization (in millions) on user change.
-. * Significance is judged by p-value, t-statistic, and 95% confidence interval
-. * as in the previous regressions.
+. display ""
+
+
+. display "*** COEFFICIENT INTERPRETATION ***"
+*** COEFFICIENT INTERPRETATION ***
+
+. display "β1 (lag_topmover)     = effect of being a lagged top mover BEFORE Aug 1
+> , 2019"
+β1 (lag_topmover)     = effect of being a lagged top mover BEFORE Aug 1, 2019
+
+. display "β2 (list)             = shift in baseline user change AFTER Aug 1, 2019
+> "
+β2 (list)             = shift in baseline user change AFTER Aug 1, 2019
+
+. display "β3 (interaction)      = additional effect of being a lagged top mover A
+> FTER Aug 1, 2019"
+β3 (interaction)      = additional effect of being a lagged top mover AFTER Aug 1,
+>  2019
+
+. display "                       (i.e. the difference-in-differences effect)"
+                       (i.e. the difference-in-differences effect)
+
+. display "β4 (mktcap)           = effect of market capitalization on user change"
+β4 (mktcap)           = effect of market capitalization on user change
+
+. display ""
+
+
+. display "Statistical significance is judged by p-value, t-statistic, and"
+Statistical significance is judged by p-value, t-statistic, and
+
+. display "95% confidence interval as in the previous regressions."
+95% confidence interval as in the previous regressions.
+
 . 
+. ************************************************************
+. * Summary of heteroskedasticity testing approach
+. ************************************************************
 . 
+. display ""
+
+
+. display "************************************************************"
+************************************************************
+
+. display "* METHODOLOGY SUMMARY"
+* METHODOLOGY SUMMARY
+
+. display "************************************************************"
+************************************************************
+
+. display "Heteroskedasticity Testing Approach:"
+Heteroskedasticity Testing Approach:
+
+. display "1. Breusch-Pagan test: Tests for linear relationship between"
+1. Breusch-Pagan test: Tests for linear relationship between
+
+. display "   squared residuals and fitted values"
+   squared residuals and fitted values
+
+. display "2. White test: More general test allowing for nonlinear"
+2. White test: More general test allowing for nonlinear
+
+. display "   relationships in heteroskedasticity"
+   relationships in heteroskedasticity
+
+. display "3. Decision rule: Use robust standard errors if either test"
+3. Decision rule: Use robust standard errors if either test
+
+. display "   rejects homoskedasticity at 5% significance level"
+   rejects homoskedasticity at 5% significance level
+
+. display "4. Panel structure: Could also consider clustering by ticker"
+4. Panel structure: Could also consider clustering by ticker
+
+. display "   to account for within-stock correlation over time"
+   to account for within-stock correlation over time
+
+. display ""
+
+
 . 
+. if `use_robust' == 1 {
+.     display "CONCLUSION: Robust standard errors used throughout analysis"
+CONCLUSION: Robust standard errors used throughout analysis
+.     display "due to evidence of heteroskedasticity."
+due to evidence of heteroskedasticity.
+. }
+
+. else {
+.     display "CONCLUSION: Standard OLS standard errors used as no strong"
+.     display "evidence of heteroskedasticity was found."
+. }
+
 . 
 end of do-file
 
