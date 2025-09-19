@@ -1,5 +1,5 @@
 ************************************************************
-* Assignment for Empirical Methods in Finance – Christoph Herler, Darius Richter, Leonard   22.09.2025
+* Assignment for Empirical Methods in Finance – Christoph Herler, Darius Richter and Leonard Hug,  22.09.2025
 ************************************************************
 * Presets
 
