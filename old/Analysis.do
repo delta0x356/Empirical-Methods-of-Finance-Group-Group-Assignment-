@@ -1,10 +1,13 @@
 ************************************************************
-* Assignment for Empirical Methods in Finance – Christoph Herler, 22.09.2025
+* Assignment for Empirical Methods in Finance – Christoph Herler, Darius Richter and Leonard Hug,  22.09.2025
 ************************************************************
 * Presets
 
+* Start log file (close any existing log first)
+capture log close
+log using "Results.log", replace text
 
-* 2. Loading data
+* 1. Loading data
 use tic date rh PRC SHROUT using ///
     "rh_daily.dta", clear
 
@@ -165,70 +168,183 @@ summ tmcount
 list date tmcount if tmcount != 20
 
 ************************************************************
-* 10f–h. Regressions on lagged top mover status
+* Test for heteroskedasticity before running main regressions
 ************************************************************
 
-* ----f.) Model 1: user change on lagged top mover ----
-regress userchg lag_topmover
 
-* Interpretation:
-* Coefficient on lag_topmover = 420.38
-*   -> On average, if a stock was a top mover yesterday,
-*      the number of RH users holding it increases on average c.p. by about
-*      420 on the next day, compared to non-top movers.
-* p-value < 0.001
-*   -> Highly significant; we reject the null of no effect.
-* t-statistic = 133.52
-*   -> Far above 1.96, confirming strong significance.
-* 95% confidence interval = [414.21 , 426.55]
-*   -> We are 95% confident the true effect lies inside this range.
+************************************************************"
+* HETEROSKEDASTICITY TESTING"
+************************************************************"
+
+* Run initial regression to test for heteroskedasticity
+quietly regress userchg lag_topmover
+
+* Breusch-Pagan test for heteroskedasticity
+estat hettest
+local bp_pvalue = r(p)
+display "Breusch-Pagan test p-value: " `bp_pvalue'
+
+* White test for heteroskedasticity  
+estat imtest, white
+local white_pvalue = r(p)
+display "White test p-value: " `white_pvalue'
+
+* Decision rule: if either test rejects at 5% level, use robust standard errors
+if `bp_pvalue' < 0.05 | `white_pvalue' < 0.05 {
+    local use_robust = 1
+    display ""
+    display "*** HETEROSKEDASTICITY DETECTED ***"
+    display "At least one test rejects homoskedasticity at 5% level"
+    display "Using robust standard errors for all regressions"
+    display ""
+}
+else {
+    local use_robust = 0
+
+    display "*** NO STRONG EVIDENCE OF HETEROSKEDASTICITY ***"
+    display "Both tests fail to reject homoskedasticity at 5% level"
+}
+    
+
+
+************************************************************
+* 5f–h. Regressions on lagged top mover status
+************************************************************
+
+************************************************************"
+* MAIN REGRESSION ANALYSIS"
+************************************************************"
+
+* ----f.) Model 1: user change on lagged top mover ----
+
+display "*** MODEL 1: User Change on Lagged Top Mover ***"
+
+if `use_robust' == 1 {
+    regress userchg lag_topmover, robust
+    display "Note: Using robust standard errors due to heteroskedasticity"
+}
+else {
+    regress userchg lag_topmover
+    display "Note: Using standard OLS standard errors"
+}
+
+* Store results for interpretation
+local coef_lag = _b[lag_topmover]
+local se_lag = _se[lag_topmover]
+local t_lag = _b[lag_topmover]/_se[lag_topmover]
+local p_lag = 2*ttail(e(df_r), abs(`t_lag'))
+local ci_lower = `coef_lag' - invttail(e(df_r), 0.025) * `se_lag'
+local ci_upper = `coef_lag' + invttail(e(df_r), 0.025) * `se_lag'
+
+display ""
+display "Interpretation:"
+display "Coefficient on lag_topmover = " %9.2f `coef_lag'
+display "  -> On average, if a stock was a top mover yesterday,"
+display "     the number of RH users holding it increases by about"
+display "     " %9.0f `coef_lag' " on the next day, compared to non-top movers."
+display "p-value = " %9.3f `p_lag'
+if `p_lag' < 0.001 {
+    display "  -> Highly significant; we reject the null of no effect."
+}
+else if `p_lag' < 0.05 {
+    display "  -> Significant at 5% level."
+}
+else {
+    display "  -> Not statistically significant at conventional levels."
+}
+display "t-statistic = " %9.2f `t_lag'
+display "95% confidence interval = [" %9.2f `ci_lower' ", " %9.2f `ci_upper' "]"
 
 ************************************************************
 
 * ----g.) Model 2: user ratio on lagged top mover ----
-regress userratio lag_topmover
+display ""
+display "*** MODEL 2: User Ratio on Lagged Top Mover ***"
 
-* Interpretation:
-* Coefficient on lag_topmover = 0.225
-*   -> If a stock was a top mover on the previous day,
-*      the number of RH users on the following day is on average 22.5% higher
-*      than on day before (user ratio increases by 0.225).
-* p-value < 0.001
-*   -> Highly significant.
-* t-statistic = 91.43
-*   -> Well above 1.96, confirming strong significance.
-* 95% confidence interval = [0.220 , 0.229]
-*   -> Effect is positive and precisely estimated.
+if `use_robust' == 1 {
+    regress userratio lag_topmover, robust
+    display "Note: Using robust standard errors due to heteroskedasticity"
+}
+else {
+    regress userratio lag_topmover
+    display "Note: Using standard OLS standard errors"
+}
+
+* Store results for interpretation
+local coef_lag2 = _b[lag_topmover]
+local se_lag2 = _se[lag_topmover]
+local t_lag2 = _b[lag_topmover]/_se[lag_topmover]
+local p_lag2 = 2*ttail(e(df_r), abs(`t_lag2'))
+
+display ""
+display "Interpretation:"
+display "Coefficient on lag_topmover = " %9.3f `coef_lag2'
+display "  -> If a stock was a top mover on the previous day,"
+display "     the number of RH users on the following day is on average"
+display "     " %5.1f `coef_lag2'*100 "% higher than the day before."
+display "p-value = " %9.3f `p_lag2'
+if `p_lag2' < 0.001 {
+    display "  -> Highly significant."
+}
+else if `p_lag2' < 0.05 {
+    display "  -> Significant at 5% level."
+}
 
 ************************************************************
 
 * ----h.) Model 3: user change on lagged top mover + market capitalization ----
-regress userchg lag_topmover mktcap
+display ""
+display "*** MODEL 3: User Change with Market Cap Control ***"
 
-* Interpretation:
-* Coefficient on lag_topmover = 427.53
-*   -> Including market capitalization raises the estimated effect
-*      from about 420 (Model 1) to roughly 428.
-* Coefficient on mktcap = 0.00091
-*   -> Each extra $1 million of market capitalization is associated
-*      with about 0.9 more RH users per day.
-* p-values < 0.001 for both predictors
-*   -> Both effects are highly significant.
-* 95% confidence interval for lag_topmover = [421.40 , 433.65]
-*   -> Strong and precise positive effect.
+if `use_robust' == 1 {
+    regress userchg lag_topmover mktcap, robust
+    display "Note: Using robust standard errors due to heteroskedasticity"
+}
+else {
+    regress userchg lag_topmover mktcap
+    display "Note: Using standard OLS standard errors"
+}
+
+* Store results for interpretation
+local coef_lag3 = _b[lag_topmover]
+local coef_mktcap = _b[mktcap]
+local se_lag3 = _se[lag_topmover]
+local ci_lower3 = `coef_lag3' - invttail(e(df_r), 0.025) * `se_lag3'
+local ci_upper3 = `coef_lag3' + invttail(e(df_r), 0.025) * `se_lag3'
+
+display ""
+display "Interpretation:"
+display "Coefficient on lag_topmover = " %9.2f `coef_lag3'
+display "  -> Including market capitalization changes the estimated effect"
+display "     from about " %9.0f `coef_lag' " (Model 1) to " %9.0f `coef_lag3' " (Model 3)."
+display "Coefficient on mktcap = " %12.5f `coef_mktcap'
+display "  -> Each extra $1 million of market capitalization is associated"
+display "     with about " %5.1f `coef_mktcap'*1000 " more RH users per day."
+display "95% confidence interval for lag_topmover = [" %9.2f `ci_lower3' ", " %9.2f `ci_upper3' "]"
 
 ************************************************************
 * Economic meaning for Task 5(h)
 ************************************************************
-* After controlling for firm size, the effect of being a top mover
-* becomes larger. This indicates that top movers are on average
-* smaller than typical firms. The univariate model therefore
-* underestimated the true effect.
-* Correct multiple-choice statement:
-*   (i) The univariate model underestimates the effect of being a
-*       top mover on the change in RH users. This is because top
-*       movers are smaller than the average company. -> CORRECT
-************************************************************
+display ""
+display "*** ECONOMIC INTERPRETATION ***"
+
+if `coef_lag3' > `coef_lag' {
+    display "After controlling for firm size, the effect of being a top mover"
+    display "becomes LARGER (" %9.2f `coef_lag3' " vs " %9.2f `coef_lag' ")."
+    display "This indicates that top movers are on average SMALLER than typical firms."
+    display "The univariate model therefore UNDERESTIMATED the true effect."
+    display ""
+    display "Correct multiple-choice statement:"
+    display "  (i) The univariate model underestimates the effect of being a"
+    display "      top mover on the change in RH users. This is because top"
+    display "      movers are smaller than the average company. -> CORRECT"
+}
+else {
+    display "After controlling for firm size, the effect of being a top mover"
+    display "becomes SMALLER (" %9.2f `coef_lag3' " vs " %9.2f `coef_lag' ")."
+    display "This indicates that top movers are on average LARGER than typical firms."
+    display "The univariate model therefore OVERESTIMATED the true effect."
+}
 
 ************************************************************
 * Task 6 – Top Movers feature introduction (Aug 1, 2019)
@@ -237,22 +353,17 @@ regress userchg lag_topmover mktcap
 * Define list = 1 on and after August 1, 2019, 0 otherwise
 gen byte list = date >= mdy(8,1,2019)
 
+
+*** DIFFERENCE-IN-DIFFERENCES MODEL ***"
+* "Feature introduction: August 1, 2019"
+
 * Estimate the model:
 *    userchg = β0 + β1 lag_topmover + β2 list + β3 lag_topmover × list + β4 mktcap + ε
-regress userchg lag_topmover list c.lag_topmover#c.list mktcap
-
-************************************************************
-* Task 7 – Interpretation
-************************************************************
-
-* ---- Notes for interpretation in your PDF ----
-* β1  = effect of being a lagged top mover BEFORE Aug 1, 2019.
-* β2  = shift in baseline user change after Aug 1, 2019 (when the list existed).
-* β3  = additional effect of being a lagged top mover AFTER Aug 1, 2019
-*       (i.e. the difference-in-differences effect).
-* β4  = effect of market capitalization (in millions) on user change.
-* Significance is judged by p-value, t-statistic, and 95% confidence interval
-* as in the previous regressions.
-
-
-
+if `use_robust' == 1 {
+    regress userchg lag_topmover list c.lag_topmover#c.list mktcap, robust
+    display "Note: Using robust standard errors due to heteroskedasticity"
+}
+else {
+    regress userchg lag_topmover list c.lag_topmover#c.list mktcap
+    display "Note: Using standard OLS standard errors"
+}
