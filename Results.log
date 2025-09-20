@@ -3,10 +3,10 @@
        log:  /Users/delta/Documents/GitHub/Empirical-Methods-of-Finance-Group-Grou
 > p-Assignment-/Results.log
   log type:  text
- opened on:  20 Sep 2025, 05:11:46
+ opened on:  20 Sep 2025, 05:28:39
 
 . 
-. * 1. Loading data
+. * Loading data
 . use tic date rh PRC SHROUT using ///
 >     "rh_daily.dta", clear
 
@@ -153,7 +153,6 @@ Median number of investors per stock in 2020 = 545
 
 . 
 . * iv. Check if data is at stock-day level
-. *     (one observation per stock per day)
 . duplicates report tic date
 
 Duplicates in terms of tic date
@@ -164,24 +163,16 @@ Duplicates in terms of tic date
         1 |      1750285             0
 --------------------------------------
 
-. * iv. The dataset is organized at the stock–day level (one observation per ticke
-> r and date).
-. *     This means each row represents a specific stock on a specific trading day.
->  -> CORRECT
 . 
 . ************************************************************
 . * Task 3 – Number of trading-day observations per ticker
 . ************************************************************
 . 
-. * a) Count the number of distinct trading days for each ticker
 . bysort tic: egen days_per_ticker = count(date)
 
-. 
-. * b) Keep only one row per ticker to summarize these counts
 . egen ticker_tag = tag(tic)
 
 . 
-. * c) Compute average, median, minimum, and maximum number of days per ticker
 . summarize days_per_ticker if ticker_tag, detail
 
                        days_per_ticker
@@ -199,11 +190,6 @@ Duplicates in terms of tic date
 95%          545            545       Skewness       -1.60162
 99%          545            545       Kurtosis        4.06957
 
-. * r(mean)  = average number of days
-. * r(p50)   = median number of days
-. * r(min)   = minimum number of days
-. * r(max)   = maximum number of days
-. 
 . display "Average days per ticker = " r(mean)
 Average days per ticker = 458.54991
 
@@ -217,7 +203,6 @@ Minimum days per ticker = 2
 Maximum days per ticker = 545
 
 . 
-. * d) Check the number of days for Sprint Corporation (ticker "S")
 . summarize days_per_ticker if tic=="S"
 
     Variable |        Obs        Mean    Std. dev.       Min        Max
@@ -225,49 +210,25 @@ Maximum days per ticker = 545
 days_per_t~r |        455         455           0        455        455
 
 . 
-. * Explanation:
-. * Not all tickers are observed for the same number of trading days because
-. *   - some firms IPO'd or were delisted during the sample period,
-. *   - some merged or were acquired,
-. *   - or trading was halted / data missing on some dates.
-. * Sprint Corporation (ticker S) has only 455 days because it merged with
-. * T-Mobile US in 2020 and was delisted, so data collection stopped.
-. 
 . ************************************************************
 . * Task 4 – Calculate new variables
 . ************************************************************
 . 
-. * a) Daily market capitalization (mktcap) in millions of dollars
-. *    PRC is in dollars and SHROUT is in thousands of shares.
-. *    Multiply price × (shares outstanding in thousands), divide by 1,000 to conv
-> ert to millions.
 . gen mktcap = PRC * SHROUT / 1000
 
-. 
-. * b) Daily simple returns: (mktcap_t - mktcap_t-1) / mktcap_t-1
-. *    Compute within each ticker and sort by date so that t-1 is the previous tra
-> ding day for that stock.
 . bysort tic (date): gen ret = (mktcap - mktcap[_n-1]) / mktcap[_n-1]
 (3,817 missing values generated)
 
-. 
-. * c) Daily change in users: rh_t - rh_t-1
 . bysort tic (date): gen userchg = rh - rh[_n-1]
 (3,817 missing values generated)
 
-. 
-. * d) Ratio of users compared to prior day: rh_t / rh_t-1
 . bysort tic (date): gen userratio = rh / rh[_n-1]
 (9,400 missing values generated)
 
-. 
-. * Drop observations with missing returns (these occur on the first trading day f
-> or each ticker)
 . drop if missing(ret)
 (3,817 observations deleted)
 
 . 
-. * Control -> Summarization
 . summarize mktcap ret userchg userratio
 
     Variable |        Obs        Mean    Std. dev.       Min        Max
@@ -282,38 +243,14 @@ days_per_t~r |        455         455           0        455        455
 . * Task 5 – Identify top movers
 . ************************************************************
 . 
-. * a) Absolute daily return
 . gen absret = abs(ret)
 
-. 
-. * b) Dummy = 1 if stock is among the 20 largest absolute-return movers on that d
-> ay
-. *    We rank absret within each trading day and flag the top 20.
-. bysort date (absret): gen rank_absret = _N - _n + 1   // reverse rank: 1 = large
-> st
+. bysort date (absret): gen rank_absret = _N - _n + 1
 
 . bysort date: gen topmover = rank_absret <= 20
 
-. 
-. * c.) Fraction of top movers with positive vs. negative returns
-. * Create a dummy for positive daily return (1 = positive, 0 = zero or negative)
 . gen byte posret = (ret > 0)
 
-. 
-. * One-way tabulation of positive vs. non-positive returns among top movers
-. tab1 posret if topmover==1
-
--> tabulation of posret if topmover==1 
-
-     posret |      Freq.     Percent        Cum.
-------------+-----------------------------------
-          0 |      3,549       32.62       32.62
-          1 |      7,331       67.38      100.00
-------------+-----------------------------------
-      Total |     10,880      100.00
-
-. 
-. * Optional: see counts and percentages more explicitly
 . tab posret if topmover==1
 
      posret |      Freq.     Percent        Cum.
@@ -323,11 +260,6 @@ days_per_t~r |        455         455           0        455        455
 ------------+-----------------------------------
       Total |     10,880      100.00
 
-. 
-. * d.) Summary statistics for top movers vs non-top movers
-. 
-. * Report N, mean, standard deviation and median of key variables,
-. * separately for top movers and non-top movers
 . tabstat mktcap ret absret userchg userratio, by(topmover) statistics(n mean sd m
 > edian)
 
@@ -352,11 +284,6 @@ topmover |    mktcap       ret    absret   userchg  userra~o
          |  840.1722         0  .0146721         0         1
 ------------------------------------------------------------
 
-. 
-. * e.) Lagged topmover indicator
-. 
-. * Generate lag_topmover = 1 if the stock was a top mover on its previous trading
->  day
 . bysort tic (date): gen lag_topmover = topmover[_n-1]
 (3,817 missing values generated)
 
@@ -365,1001 +292,21 @@ topmover |    mktcap       ret    absret   userchg  userra~o
 . * Quality check: confirm 20 top movers per day
 . ************************************************************
 . 
-. * Count the number of top movers within each date
 . bys date: egen tmcount = total(topmover)
 
-. 
-. * Summarize to see if tmcount equals 20 on (almost) all days
 . summ tmcount
 
     Variable |        Obs        Mean    Std. dev.       Min        Max
 -------------+---------------------------------------------------------
      tmcount |  1,746,468          20           0         20         20
 
-. 
-. * Optional quick check: list days where the count is not 20
 . list date tmcount if tmcount != 20
 
 . 
 . ************************************************************
-. * Test for heteroskedasticity before running main regressions
+. * Task 5(f) – Model 1: userchg on lag_topmover
 . ************************************************************
 . 
-. 
-. ************************************************************"
-. * HETEROSKEDASTICITY TESTING"
-. ************************************************************"
-. 
-. * Run initial regression to test for heteroskedasticity
-. quietly regress userchg lag_topmover
-
-. 
-. * Breusch-Pagan test for heteroskedasticity
-. estat hettest
-
-Breusch–Pagan/Cook–Weisberg test for heteroskedasticity 
-Assumption: Normal error terms
-Variable: Fitted values of userchg
-
-H0: Constant variance
-
-    chi2(1) = 1.21e+07
-Prob > chi2 =   0.0000
-
-. local bp_pvalue = r(p)
-
-. display "Breusch-Pagan test p-value: " `bp_pvalue'
-Breusch-Pagan test p-value: 0
-
-. 
-. * White test for heteroskedasticity  
-. estat imtest, white
-
-White's test
-H0: Homoskedasticity
-Ha: Unrestricted heteroskedasticity
-
-    chi2(1) = 3540.00
-Prob > chi2 =  0.0000
-
-Cameron & Trivedi's decomposition of IM-test
-
---------------------------------------------------
-              Source |       chi2     df         p
----------------------+----------------------------
-  Heteroskedasticity |    3539.98      1    0.0000
-            Skewness |    1637.84      1    0.0000
-            Kurtosis | -685897.80      1    1.0000
----------------------+----------------------------
-               Total | -680719.97      3    1.0000
---------------------------------------------------
-
-. local white_pvalue = r(p)
-
-. display "White test p-value: " `white_pvalue'
-White test p-value: 0
-
-. 
-. * Decision rule: if either test rejects at 5% level, use robust standard errors
-. if `bp_pvalue' < 0.05 | `white_pvalue' < 0.05 {
-.     local use_robust = 1
-.     display ""
-
-.     display "*** HETEROSKEDASTICITY DETECTED ***"
-*** HETEROSKEDASTICITY DETECTED ***
-.     display "At least one test rejects homoskedasticity at 5% level"
-At least one test rejects homoskedasticity at 5% level
-.     display "Using robust standard errors for all regressions"
-Using robust standard errors for all regressions
-.     display ""
-
-. }
-
-. else {
-.     local use_robust = 0
-. 
-.     display "*** NO STRONG EVIDENCE OF HETEROSKEDASTICITY ***"
-.     display "Both tests fail to reject homoskedasticity at 5% level"
-. }
-
-.     
-. 
-. 
-. ************************************************************
-. * 5f–h. Regressions on lagged top mover status
-. ************************************************************
-. 
-. ************************************************************"
-. * MAIN REGRESSION ANALYSIS"
-. ************************************************************"
-. 
-. * ----f.) Model 1: user change on lagged top mover ----
-. 
-. display "*** MODEL 1: User Change on Lagged Top Mover ***"
-*** MODEL 1: User Change on Lagged Top Mover ***
-
-. 
-. if `use_robust' == 1 {
-.     regress userchg lag_topmover, robust
-
-Linear regression                               Number of obs     =  1,742,651
-                                                F(1, 1742649)     =     372.61
-                                                Prob > F          =     0.0000
-                                                R-squared         =     0.0101
-                                                Root MSE          =     326.81
-
-------------------------------------------------------------------------------
-             |               Robust
-     userchg | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
--------------+----------------------------------------------------------------
-lag_topmover |   420.3837   21.77816    19.30   0.000     377.6992    463.0681
-       _cons |   12.31046   .2085034    59.04   0.000      11.9018    12.71912
-------------------------------------------------------------------------------
-.     display "Note: Using robust standard errors due to heteroskedasticity"
-Note: Using robust standard errors due to heteroskedasticity
-. }
-
-. else {
-.     regress userchg lag_topmover
-.     display "Note: Using standard OLS standard errors"
-. }
-
-. 
-. * Store results for interpretation
-. local coef_lag = _b[lag_topmover]
-
-. local se_lag = _se[lag_topmover]
-
-. local t_lag = _b[lag_topmover]/_se[lag_topmover]
-
-. local p_lag = 2*ttail(e(df_r), abs(`t_lag'))
-
-. local ci_lower = `coef_lag' - invttail(e(df_r), 0.025) * `se_lag'
-
-. local ci_upper = `coef_lag' + invttail(e(df_r), 0.025) * `se_lag'
-
-. 
-. display ""
-
-
-. display "Interpretation:"
-Interpretation:
-
-. display "Coefficient on lag_topmover = " %9.2f `coef_lag'
-Coefficient on lag_topmover =    420.38
-
-. display "  -> On average, if a stock was a top mover yesterday,"
-  -> On average, if a stock was a top mover yesterday,
-
-. display "     the number of RH users holding it increases by about"
-     the number of RH users holding it increases by about
-
-. display "     " %9.0f `coef_lag' " on the next day, compared to non-top movers."
-           420 on the next day, compared to non-top movers.
-
-. display "p-value = " %9.3f `p_lag'
-p-value =     0.000
-
-. if `p_lag' < 0.001 {
-.     display "  -> Highly significant; we reject the null of no effect."
-  -> Highly significant; we reject the null of no effect.
-. }
-
-. else if `p_lag' < 0.05 {
-.     display "  -> Significant at 5% level."
-. }
-
-. else {
-.     display "  -> Not statistically significant at conventional levels."
-. }
-
-. display "t-statistic = " %9.2f `t_lag'
-t-statistic =     19.30
-
-. display "95% confidence interval = [" %9.2f `ci_lower' ", " %9.2f `ci_upper' "]"
-95% confidence interval = [   377.70,    463.07]
-
-. 
-. ************************************************************
-. 
-. * ----g.) Model 2: user ratio on lagged top mover ----
-. display ""
-
-
-. display "*** MODEL 2: User Ratio on Lagged Top Mover ***"
-*** MODEL 2: User Ratio on Lagged Top Mover ***
-
-. 
-. if `use_robust' == 1 {
-.     regress userratio lag_topmover, robust
-
-Linear regression                               Number of obs     =  1,737,406
-                                                F(1, 1737404)     =     333.90
-                                                Prob > F          =     0.0000
-                                                R-squared         =     0.0048
-                                                Root MSE          =     .25381
-
-------------------------------------------------------------------------------
-             |               Robust
-   userratio | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
--------------+----------------------------------------------------------------
-lag_topmover |   .2245127   .0122866    18.27   0.000     .2004314     .248594
-       _cons |   1.005283    .000178  5647.05   0.000     1.004934    1.005632
-------------------------------------------------------------------------------
-.     display "Note: Using robust standard errors due to heteroskedasticity"
-Note: Using robust standard errors due to heteroskedasticity
-. }
-
-. else {
-.     regress userratio lag_topmover
-.     display "Note: Using standard OLS standard errors"
-. }
-
-. 
-. * Store results for interpretation
-. local coef_lag2 = _b[lag_topmover]
-
-. local se_lag2 = _se[lag_topmover]
-
-. local t_lag2 = _b[lag_topmover]/_se[lag_topmover]
-
-. local p_lag2 = 2*ttail(e(df_r), abs(`t_lag2'))
-
-. 
-. display ""
-
-
-. display "Interpretation:"
-Interpretation:
-
-. display "Coefficient on lag_topmover = " %9.3f `coef_lag2'
-Coefficient on lag_topmover =     0.225
-
-. display "  -> If a stock was a top mover on the previous day,"
-  -> If a stock was a top mover on the previous day,
-
-. display "     the number of RH users on the following day is on average"
-     the number of RH users on the following day is on average
-
-. display "     " %5.1f `coef_lag2'*100 "% higher than the day before."
-      22.5% higher than the day before.
-
-. display "p-value = " %9.3f `p_lag2'
-p-value =     0.000
-
-. if `p_lag2' < 0.001 {
-.     display "  -> Highly significant."
-  -> Highly significant.
-. }
-
-. else if `p_lag2' < 0.05 {
-.     display "  -> Significant at 5% level."
-. }
-
-. 
-. ************************************************************
-. 
-. * ----h.) Model 3: user change on lagged top mover + market capitalization ----
-. display ""
-
-
-. display "*** MODEL 3: User Change with Market Cap Control ***"
-*** MODEL 3: User Change with Market Cap Control ***
-
-. 
-. if `use_robust' == 1 {
-.     regress userchg lag_topmover mktcap, robust
-
-Linear regression                               Number of obs     =  1,742,651
-                                                F(2, 1742648)     =     359.72
-                                                Prob > F          =     0.0000
-                                                R-squared         =     0.0243
-                                                Root MSE          =     324.46
-
-------------------------------------------------------------------------------
-             |               Robust
-     userchg | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
--------------+----------------------------------------------------------------
-lag_topmover |   427.5265   21.77846    19.63   0.000     384.8415    470.2115
-      mktcap |   .0009128   .0000487    18.76   0.000     .0008175    .0010082
-       _cons |   4.397488   .3960764    11.10   0.000     3.621192    5.173784
-------------------------------------------------------------------------------
-.     display "Note: Using robust standard errors due to heteroskedasticity"
-Note: Using robust standard errors due to heteroskedasticity
-. }
-
-. else {
-.     regress userchg lag_topmover mktcap
-.     display "Note: Using standard OLS standard errors"
-. }
-
-. 
-. * Store results for interpretation
-. local coef_lag3 = _b[lag_topmover]
-
-. local coef_mktcap = _b[mktcap]
-
-. local se_lag3 = _se[lag_topmover]
-
-. local ci_lower3 = `coef_lag3' - invttail(e(df_r), 0.025) * `se_lag3'
-
-. local ci_upper3 = `coef_lag3' + invttail(e(df_r), 0.025) * `se_lag3'
-
-. 
-. display ""
-
-
-. display "Interpretation:"
-Interpretation:
-
-. display "Coefficient on lag_topmover = " %9.2f `coef_lag3'
-Coefficient on lag_topmover =    427.53
-
-. display "  -> Including market capitalization changes the estimated effect"
-  -> Including market capitalization changes the estimated effect
-
-. display "     from about " %9.0f `coef_lag' " (Model 1) to " %9.0f `coef_lag3' "
->  (Model 3)."
-     from about       420 (Model 1) to       428 (Model 3).
-
-. display "Coefficient on mktcap = " %12.5f `coef_mktcap'
-Coefficient on mktcap =      0.00091
-
-. display "  -> Each extra $1 million of market capitalization is associated"
-  -> Each extra $1 million of market capitalization is associated
-
-. display "     with about " %5.1f `coef_mktcap'*1000 " more RH users per day."
-     with about   0.9 more RH users per day.
-
-. display "95% confidence interval for lag_topmover = [" %9.2f `ci_lower3' ", " %9
-> .2f `ci_upper3' "]"
-95% confidence interval for lag_topmover = [   384.84,    470.21]
-
-. 
-. ************************************************************
-. * Economic meaning for Task 5(h)
-. ************************************************************
-. display ""
-
-
-. display "*** ECONOMIC INTERPRETATION ***"
-*** ECONOMIC INTERPRETATION ***
-
-. 
-. if `coef_lag3' > `coef_lag' {
-.     display "After controlling for firm size, the effect of being a top mover"
-After controlling for firm size, the effect of being a top mover
-.     display "becomes LARGER (" %9.2f `coef_lag3' " vs " %9.2f `coef_lag' ")."
-becomes LARGER (   427.53 vs    420.38).
-.     display "This indicates that top movers are on average SMALLER than typical 
-> firms."
-This indicates that top movers are on average SMALLER than typical firms.
-.     display "The univariate model therefore UNDERESTIMATED the true effect."
-The univariate model therefore UNDERESTIMATED the true effect.
-.     display ""
-
-.     display "Correct multiple-choice statement:"
-Correct multiple-choice statement:
-.     display "  (i) The univariate model underestimates the effect of being a"
-  (i) The univariate model underestimates the effect of being a
-.     display "      top mover on the change in RH users. This is because top"
-      top mover on the change in RH users. This is because top
-.     display "      movers are smaller than the average company. -> CORRECT"
-      movers are smaller than the average company. -> CORRECT
-. }
-
-. else {
-.     display "After controlling for firm size, the effect of being a top mover"
-.     display "becomes SMALLER (" %9.2f `coef_lag3' " vs " %9.2f `coef_lag' ")."
-.     display "This indicates that top movers are on average LARGER than typical f
-> irms."
-.     display "The univariate model therefore OVERESTIMATED the true effect."
-. }
-
-. 
-. ************************************************************
-. * Task 6 – Top Movers feature introduction (Aug 1, 2019)
-. ************************************************************
-. 
-. * Define list = 1 on and after August 1, 2019, 0 otherwise
-. gen byte list = date >= mdy(8,1,2019)
-
-. 
-. 
-. *** DIFFERENCE-IN-DIFFERENCES MODEL ***"
-. * "Feature introduction: August 1, 2019"
-. 
-. * Estimate the model:
-. *    userchg = β0 + β1 lag_topmover + β2 list + β3 lag_topmover × list + β4 mktc
-> ap + ε
-. if `use_robust' == 1 {
-.     regress userchg lag_topmover list c.lag_topmover#c.list mktcap, robust
-
-Linear regression                               Number of obs     =  1,742,651
-                                                F(4, 1742646)     =     622.64
-                                                Prob > F          =     0.0000
-                                                R-squared         =     0.0313
-                                                Root MSE          =     323.29
-
----------------------------------------------------------------------------------
-                |               Robust
-        userchg | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
-----------------+----------------------------------------------------------------
-   lag_topmover |   138.6204   8.622806    16.08   0.000       121.72    155.5208
-           list |      19.03   .4291263    44.35   0.000     18.18893    19.87107
-                |
- c.lag_topmover#|
-         c.list |   639.9109   47.25208    13.54   0.000     547.2984    732.5233
-                |
-         mktcap |   .0009139   .0000486    18.80   0.000     .0008186    .0010092
-          _cons |  -4.834506   .4341091   -11.14   0.000    -5.685345   -3.983667
----------------------------------------------------------------------------------
-.     display "Note: Using robust standard errors due to heteroskedasticity"
-Note: Using robust standard errors due to heteroskedasticity
-. }
-
-. else {
-.     regress userchg lag_topmover list c.lag_topmover#c.list mktcap
-.     display "Note: Using standard OLS standard errors"
-. }
-
-. 
-end of do-file
-
-. do "/Users/delta/Downloads/Stata-Code (1).do"
-
-. browse
-
-. summarize
-
-    Variable |        Obs        Mean    Std. dev.       Min        Max
--------------+---------------------------------------------------------
-         tic |          0
-        date |  1,746,468    21740.48    238.9398      21311      22140
-          rh |  1,746,468    3173.646    19740.69          0     944922
-         PRC |  1,746,468    46.73367    124.7835       .038       4699
-      SHROUT |  1,746,468    137068.3    458550.9          9   1.01e+07
--------------+---------------------------------------------------------
-     stockid |  1,746,468           0           0          0          0
-       dayid |  1,746,468    .0003115    .0176462          0          1
-        year |  1,746,468    2019.014    .7410608       2018       2020
-days_per_t~r |  1,746,468    510.9835    90.74266          2        545
-  ticker_tag |  1,746,468    .0021758    .0465949          0          1
--------------+---------------------------------------------------------
-      mktcap |  1,746,468     8616.61    42828.48      .0297    1966963
-         ret |  1,746,468    .0014964    .2901892  -.9181383   372.8114
-     userchg |  1,746,468    15.18571       342.4     -39981      74869
-   userratio |  1,740,885    1.007801    .3803828          0     270.75
-      absret |  1,746,468    .0263517    .2889941          0   372.8114
--------------+---------------------------------------------------------
- rank_absret |  1,746,468    1613.296    939.8333          1       3521
-    topmover |  1,746,468    .0062297    .0786823          0          1
-      posret |  1,746,468    .4926016    .4999454          0          1
-lag_topmover |  1,742,651     .006221    .0786275          0          1
-     tmcount |  1,746,468          20           0         20         20
--------------+---------------------------------------------------------
-        list |  1,746,468     .483643    .4997325          0          1
-
-. 
-. *1. clear negative prices & missings
-. drop if PRC < 0 | missing(PRC)
-(0 observations deleted)
-
-. 
-. *1. Outage-Days out
-. drop if inlist(date, mdy(3,2,2020), mdy(3,3,2020), mdy(6,18,2020))
-(0 observations deleted)
-
-. 
-. *1. Number of Stocks & Dates
-. quietly tabulate tic
-
-. display "Unique tic: " r(r)
-Unique tic: 3817
-
-. 
-. quietly tabulate date
-
-. display "Unique date: " r(r)
-Unique date: 544
-
-. 
-. *1. Answer: 3817 tic ; 545 dates
-. 
-. *saving clear dataset
-. save "C:\Users\janni\Documents\Jannis\Studium\NOVA\Kurse\Empirical Methods Finan
-> ce (3,5.CP)\Group work\Data\clear_data.dta", replace
-(file C:\Users\janni\Documents\Jannis\Studium\NOVA\Kurse\Empirical Methods
-    Finance (3,5.CP)\Group work\Data\clear_data.dta not found)
-file C:\Users\janni\Documents\Jannis\Studium\NOVA\Kurse\Empirical Methods
-    Finance (3,5.CP)\Group work\Data\clear_data.dta saved
-
-. 
-. *2. generate year variable
-. gen year = year(date)
-variable year already defined
-r(110);
-
-end of do-file
-
-r(110);
-
-. do "/Users/delta/Downloads/Stata-Code (1).do"
-
-. browse
-
-. summarize
-
-    Variable |        Obs        Mean    Std. dev.       Min        Max
--------------+---------------------------------------------------------
-         tic |          0
-        date |  1,746,468    21740.48    238.9398      21311      22140
-          rh |  1,746,468    3173.646    19740.69          0     944922
-         PRC |  1,746,468    46.73367    124.7835       .038       4699
-      SHROUT |  1,746,468    137068.3    458550.9          9   1.01e+07
--------------+---------------------------------------------------------
-     stockid |  1,746,468           0           0          0          0
-       dayid |  1,746,468    .0003115    .0176462          0          1
-        year |  1,746,468    2019.014    .7410608       2018       2020
-days_per_t~r |  1,746,468    510.9835    90.74266          2        545
-  ticker_tag |  1,746,468    .0021758    .0465949          0          1
--------------+---------------------------------------------------------
-      mktcap |  1,746,468     8616.61    42828.48      .0297    1966963
-         ret |  1,746,468    .0014964    .2901892  -.9181383   372.8114
-     userchg |  1,746,468    15.18571       342.4     -39981      74869
-   userratio |  1,740,885    1.007801    .3803828          0     270.75
-      absret |  1,746,468    .0263517    .2889941          0   372.8114
--------------+---------------------------------------------------------
- rank_absret |  1,746,468    1613.296    939.8333          1       3521
-    topmover |  1,746,468    .0062297    .0786823          0          1
-      posret |  1,746,468    .4926016    .4999454          0          1
-lag_topmover |  1,742,651     .006221    .0786275          0          1
-     tmcount |  1,746,468          20           0         20         20
--------------+---------------------------------------------------------
-        list |  1,746,468     .483643    .4997325          0          1
-
-. 
-. *1. clear negative prices & missings
-. drop if PRC < 0 | missing(PRC)
-(0 observations deleted)
-
-. 
-. *1. Outage-Days out
-. drop if inlist(date, mdy(3,2,2020), mdy(3,3,2020), mdy(6,18,2020))
-(0 observations deleted)
-
-. 
-. *1. Number of Stocks & Dates
-. quietly tabulate tic
---Break--
-r(1);
-
-end of do-file
-
---Break--
-r(1);
-
-. do "/Users/delta/Documents/GitHub/Empirical-Methods-of-Finance-Group-Group-Assig
-> nment-/Assignment (6).do"
-
-. ************************************************************
-. * Assignment for Empirical Methods in Finance – Christoph Herler, 22.09.2025
-. ************************************************************
-. * Presets
-. * 1. Working directory 
-. cd "C:\Users\studi\Desktop\Empirical\Group Assignment"
-unable to change to C:\Users\studi\Desktop\Empirical\Group Assignment
-r(170);
-
-end of do-file
-
-r(170);
-
-. do "/Users/delta/Documents/GitHub/Empirical-Methods-of-Finance-Group-Group-Assig
-> nment-/Assignment (6).do"
-
-. ************************************************************
-. * Assignment for Empirical Methods in Finance – Christoph Herler, 22.09.2025
-. ************************************************************
-. * Presets
-. * 1. Working directory 
-. cd "C:\Users\studi\Desktop\Empirical\Group Assignment"
-unable to change to C:\Users\studi\Desktop\Empirical\Group Assignment
-r(170);
-
-end of do-file
-
-r(170);
-
-. do "/Users/delta/Documents/GitHub/Empirical-Methods-of-Finance-Group-Group-Assig
-> nment-/Assignment (6).do"
-
-. ************************************************************
-. * Assignment for Empirical Methods in Finance – Christoph Herler, 22.09.2025
-. ************************************************************
-. * Presets
-. 
-. 
-. * 2. Loading data
-. use tic date rh PRC SHROUT using ///
->     "rh_daily.dta", clear
-
-. 
-. ************************************************************
-. * Data cleaning – Assignment 1
-. ************************************************************
-. 
-. * a) Drop observations with missing or negative stock price
-. drop if missing(PRC) | PRC < 0
-(860,093 observations deleted)
-
-. 
-. * b) Drop observations on Robinhood outage dates
-. drop if inlist(date, mdy(3,2,2020), mdy(3,3,2020), mdy(6,18,2020))
-(7,001 observations deleted)
-
-. 
-. ************************************************************
-. * Count remaining distinct stocks and trading days
-. ************************************************************
-. 
-. * Count number of distinct stocks (unique ticker symbols)
-. egen stockid = tag(tic)
-
-. count if stockid
-  3,817
-
-. 
-. * Count number of distinct trading days (unique dates)
-. egen dayid = tag(date)
-
-. count if dayid
-  545
-
-. 
-. ************************************************************
-. * Task 2 – Create year variable and summary statistics
-. ************************************************************
-. 
-. * a) Generate year from the Stata daily date variable
-. gen year = year(date)
-
-. 
-. * b) Summary statistics of rh (number of RH investors holding a stock),
-. *    by year: N (obs), mean, standard deviation, median
-. by year, sort: summarize rh
-
-----------------------------------------------------------------------------------
--> year = 2018
-
-    Variable |        Obs        Mean    Std. dev.       Min        Max
--------------+---------------------------------------------------------
-          rh |    470,477     1758.96    9945.933          0     216215
-
-----------------------------------------------------------------------------------
--> year = 2019
-
-    Variable |        Obs        Mean    Std. dev.       Min        Max
--------------+---------------------------------------------------------
-          rh |    787,498    2452.887    13544.21          0     320372
-
-----------------------------------------------------------------------------------
--> year = 2020
-
-    Variable |        Obs        Mean    Std. dev.       Min        Max
--------------+---------------------------------------------------------
-          rh |    492,310    5663.198    31400.03          0     944922
-
-
-. by year, sort: tabstat rh, statistics(mean sd median n)
-
-----------------------------------------------------------------------------------
--> year = 2018
-
-    Variable |      Mean        SD       p50         N
--------------+----------------------------------------
-          rh |   1758.96  9945.933       205    470477
-------------------------------------------------------
-
-----------------------------------------------------------------------------------
--> year = 2019
-
-    Variable |      Mean        SD       p50         N
--------------+----------------------------------------
-          rh |  2452.887  13544.21       285    787498
-------------------------------------------------------
-
-----------------------------------------------------------------------------------
--> year = 2020
-
-    Variable |      Mean        SD       p50         N
--------------+----------------------------------------
-          rh |  5663.198  31400.03       545    492310
-------------------------------------------------------
-
-. 
-. ************************************************************
-. * Task 2(b) – Check which statements are correct
-. ************************************************************
-. * i. Total number of Robinhood investors in 2018
-. *    (sum of rh across all observations in 2018) -> INCORRECT
-. summarize rh if year==2018, detail
-
-                             rh
--------------------------------------------------------------
-      Percentiles      Smallest
- 1%            5              0
- 5%           15              0
-10%           26              0       Obs             470,477
-25%           65              0       Sum of wgt.     470,477
-
-50%          205                      Mean            1758.96
-                        Largest       Std. dev.      9945.933
-75%          652         212154
-90%         2181         214415       Variance       9.89e+07
-95%         4939         214819       Skewness       12.27734
-99%        31797         216215       Kurtosis       178.0158
-
-. display "Total RH investors 2018 = " r(sum)
-Total RH investors 2018 = 8.276e+08
-
-. 
-. * ii & iii. Median number of investors in 2020 - ii -> INCORRECT, iii -> CORRECT
-. summarize rh if year==2020, detail
-
-                             rh
--------------------------------------------------------------
-      Percentiles      Smallest
- 1%            6              0
- 5%           25              0
-10%           48              0       Obs             492,310
-25%          151              0       Sum of wgt.     492,310
-
-50%          545                      Mean           5663.198
-                        Largest       Std. dev.      31400.03
-75%         2030         941204
-90%         7231         941276       Variance       9.86e+08
-95%        17598         942657       Skewness        14.5873
-99%       101770         944922       Kurtosis       286.7206
-
-. display "Median number of investors per stock in 2020 = " r(p50)
-Median number of investors per stock in 2020 = 545
-
-. 
-. * iv. Check if data is at stock-day level
-. *     (one observation per stock per day)
-. duplicates report tic date
-
-Duplicates in terms of tic date
-
---------------------------------------
-   Copies | Observations       Surplus
-----------+---------------------------
-        1 |      1750285             0
---------------------------------------
-
-. * iv. The dataset is organized at the stock–day level (one observation per ticke
-> r and date).
-. *     This means each row represents a specific stock on a specific trading day.
->  -> CORRECT
-. 
-. ************************************************************
-. * Task 3 – Number of trading-day observations per ticker
-. ************************************************************
-. 
-. * a) Count the number of distinct trading days for each ticker
-. bysort tic: egen days_per_ticker = count(date)
-
-. 
-. * b) Keep only one row per ticker to summarize these counts
-. egen ticker_tag = tag(tic)
-
-. 
-. * c) Compute average, median, minimum, and maximum number of days per ticker
-. summarize days_per_ticker if ticker_tag, detail
-
-                       days_per_ticker
--------------------------------------------------------------
-      Percentiles      Smallest
- 1%           21              2
- 5%           95              2
-10%          167              3       Obs               3,817
-25%          449              5       Sum of wgt.       3,817
-
-50%          545                      Mean           458.5499
-                        Largest       Std. dev.      154.9106
-75%          545            545
-90%          545            545       Variance       23997.28
-95%          545            545       Skewness       -1.60162
-99%          545            545       Kurtosis        4.06957
-
-. * r(mean)  = average number of days
-. * r(p50)   = median number of days
-. * r(min)   = minimum number of days
-. * r(max)   = maximum number of days
-. 
-. display "Average days per ticker = " r(mean)
-Average days per ticker = 458.54991
-
-. display "Median days per ticker = " r(p50)
-Median days per ticker = 545
-
-. display "Minimum days per ticker = " r(min)
-Minimum days per ticker = 2
-
-. display "Maximum days per ticker = " r(max)
-Maximum days per ticker = 545
-
-. 
-. * d) Check the number of days for Sprint Corporation (ticker "S")
-. summarize days_per_ticker if tic=="S"
-
-    Variable |        Obs        Mean    Std. dev.       Min        Max
--------------+---------------------------------------------------------
-days_per_t~r |        455         455           0        455        455
-
-. 
-. * Explanation:
-. * Not all tickers are observed for the same number of trading days because
-. *   - some firms IPO'd or were delisted during the sample period,
-. *   - some merged or were acquired,
-. *   - or trading was halted / data missing on some dates.
-. * Sprint Corporation (ticker S) has only 455 days because it merged with
-. * T-Mobile US in 2020 and was delisted, so data collection stopped.
-. 
-. ************************************************************
-. * Task 4 – Calculate new variables
-. ************************************************************
-. 
-. * a) Daily market capitalization (mktcap) in millions of dollars
-. *    PRC is in dollars and SHROUT is in thousands of shares.
-. *    Multiply price × (shares outstanding in thousands), divide by 1,000 to conv
-> ert to millions.
-. gen mktcap = PRC * SHROUT / 1000
-
-. 
-. * b) Daily simple returns: (mktcap_t - mktcap_t-1) / mktcap_t-1
-. *    Compute within each ticker and sort by date so that t-1 is the previous tra
-> ding day for that stock.
-. bysort tic (date): gen ret = (mktcap - mktcap[_n-1]) / mktcap[_n-1]
-(3,817 missing values generated)
-
-. 
-. * c) Daily change in users: rh_t - rh_t-1
-. bysort tic (date): gen userchg = rh - rh[_n-1]
-(3,817 missing values generated)
-
-. 
-. * d) Ratio of users compared to prior day: rh_t / rh_t-1
-. bysort tic (date): gen userratio = rh / rh[_n-1]
-(9,400 missing values generated)
-
-. 
-. * Drop observations with missing returns (these occur on the first trading day f
-> or each ticker)
-. drop if missing(ret)
-(3,817 observations deleted)
-
-. 
-. * Control -> Summarization
-. summarize mktcap ret userchg userratio
-
-    Variable |        Obs        Mean    Std. dev.       Min        Max
--------------+---------------------------------------------------------
-      mktcap |  1,746,468     8616.61    42828.48      .0297    1966963
-         ret |  1,746,468    .0014964    .2901892  -.9181383   372.8114
-     userchg |  1,746,468    15.18571       342.4     -39981      74869
-   userratio |  1,740,885    1.007801    .3803828          0     270.75
-
-. 
-. ************************************************************
-. * Task 5 – Identify top movers
-. ************************************************************
-. 
-. * a) Absolute daily return
-. gen absret = abs(ret)
-
-. 
-. * b) Dummy = 1 if stock is among the 20 largest absolute-return movers on that d
-> ay
-. *    We rank absret within each trading day and flag the top 20.
-. bysort date (absret): gen rank_absret = _N - _n + 1   // reverse rank: 1 = large
-> st
-
-. bysort date: gen topmover = rank_absret <= 20
-
-. 
-. * c.) Fraction of top movers with positive vs. negative returns
-. * Create a dummy for positive daily return (1 = positive, 0 = zero or negative)
-. gen byte posret = (ret > 0)
-
-. 
-. * One-way tabulation of positive vs. non-positive returns among top movers
-. tab1 posret if topmover==1
-
--> tabulation of posret if topmover==1 
-
-     posret |      Freq.     Percent        Cum.
-------------+-----------------------------------
-          0 |      3,549       32.62       32.62
-          1 |      7,331       67.38      100.00
-------------+-----------------------------------
-      Total |     10,880      100.00
-
-. 
-. * Optional: see counts and percentages more explicitly
-. tab posret if topmover==1
-
-     posret |      Freq.     Percent        Cum.
-------------+-----------------------------------
-          0 |      3,549       32.62       32.62
-          1 |      7,331       67.38      100.00
-------------+-----------------------------------
-      Total |     10,880      100.00
-
-. 
-. * d.) Summary statistics for top movers vs non-top movers
-. 
-. * Report N, mean, standard deviation and median of key variables,
-. * separately for top movers and non-top movers
-. tabstat mktcap ret absret userchg userratio, by(topmover) statistics(n mean sd m
-> edian)
-
-Summary statistics: N, Mean, SD, p50
-Group variable: topmover 
-
-topmover |    mktcap       ret    absret   userchg  userra~o
----------+--------------------------------------------------
-       0 |   1735588   1735588   1735588   1735588   1730107
-         |  8665.328  .0000436  .0240791  13.59478  1.006484
-         |  42955.42  .0384479  .0299739  317.2785  .3467726
-         |  851.4995         0  .0145345         0         1
----------+--------------------------------------------------
-       1 |     10880     10880     10880     10880     10778
-         |  845.0439  .2332419  .3888794  268.9728  1.219268
-         |  6035.425  3.637141  3.623804  1642.033  2.005789
-         |  86.28014  .1823401  .2321107         9  1.015814
----------+--------------------------------------------------
-   Total |   1746468   1746468   1746468   1746468   1740885
-         |   8616.61  .0014964  .0263517  15.18571  1.007801
-         |  42828.48  .2901892  .2889941     342.4  .3803828
-         |  840.1722         0  .0146721         0         1
-------------------------------------------------------------
-
-. 
-. * e.) Lagged topmover indicator
-. 
-. * Generate lag_topmover = 1 if the stock was a top mover on its previous trading
->  day
-. bysort tic (date): gen lag_topmover = topmover[_n-1]
-(3,817 missing values generated)
-
-. 
-. ************************************************************
-. * Quality check: confirm 20 top movers per day
-. ************************************************************
-. 
-. * Count the number of top movers within each date
-. bys date: egen tmcount = total(topmover)
-
-. 
-. * Summarize to see if tmcount equals 20 on (almost) all days
-. summ tmcount
-
-    Variable |        Obs        Mean    Std. dev.       Min        Max
--------------+---------------------------------------------------------
-     tmcount |  1,746,468          20           0         20         20
-
-. 
-. * Optional quick check: list days where the count is not 20
-. list date tmcount if tmcount != 20
-
-. 
-. ************************************************************
-. * 10f–h. Regressions on lagged top mover status
-. ************************************************************
-. 
-. * ----f.) Model 1: user change on lagged top mover ----
 . regress userchg lag_topmover
 
       Source |       SS           df       MS      Number of obs   = 1,742,651
@@ -1376,22 +323,38 @@ lag_topmover |   420.3837   3.148571   133.52   0.000     414.2126    426.5547
        _cons |   12.31046   .2483378    49.57   0.000     11.82373     12.7972
 ------------------------------------------------------------------------------
 
-. 
-. * Interpretation:
-. * Coefficient on lag_topmover = 420.38
-. *   -> On average, if a stock was a top mover yesterday,
-. *      the number of RH users holding it increases on average c.p. by about
-. *      420 on the next day, compared to non-top movers.
-. * p-value < 0.001
-. *   -> Highly significant; we reject the null of no effect.
-. * t-statistic = 133.52
-. *   -> Far above 1.96, confirming strong significance.
-. * 95% confidence interval = [414.21 , 426.55]
-. *   -> We are 95% confident the true effect lies inside this range.
+. estat hettest
+
+Breusch–Pagan/Cook–Weisberg test for heteroskedasticity 
+Assumption: Normal error terms
+Variable: Fitted values of userchg
+
+H0: Constant variance
+
+    chi2(1) = 1.21e+07
+Prob > chi2 =   0.0000
+
+. regress userchg lag_topmover, robust
+
+Linear regression                               Number of obs     =  1,742,651
+                                                F(1, 1742649)     =     372.61
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0101
+                                                Root MSE          =     326.81
+
+------------------------------------------------------------------------------
+             |               Robust
+     userchg | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+lag_topmover |   420.3837   21.77816    19.30   0.000     377.6992    463.0681
+       _cons |   12.31046   .2085034    59.04   0.000      11.9018    12.71912
+------------------------------------------------------------------------------
+
 . 
 . ************************************************************
+. * Task 5(g) – Model 2: userratio on lag_topmover
+. ************************************************************
 . 
-. * ----g.) Model 2: user ratio on lagged top mover ----
 . regress userratio lag_topmover
 
       Source |       SS           df       MS      Number of obs   = 1,737,406
@@ -1408,22 +371,38 @@ lag_topmover |   .2245127   .0024555    91.43   0.000        .2197    .2293253
        _cons |   1.005283   .0001932  5204.47   0.000     1.004904    1.005661
 ------------------------------------------------------------------------------
 
-. 
-. * Interpretation:
-. * Coefficient on lag_topmover = 0.225
-. *   -> If a stock was a top mover on the previous day,
-. *      the number of RH users on the following day is on average 22.5% higher
-. *      than on day before (user ratio increases by 0.225).
-. * p-value < 0.001
-. *   -> Highly significant.
-. * t-statistic = 91.43
-. *   -> Well above 1.96, confirming strong significance.
-. * 95% confidence interval = [0.220 , 0.229]
-. *   -> Effect is positive and precisely estimated.
+. estat hettest
+
+Breusch–Pagan/Cook–Weisberg test for heteroskedasticity 
+Assumption: Normal error terms
+Variable: Fitted values of userratio
+
+H0: Constant variance
+
+    chi2(1) = 3.16e+06
+Prob > chi2 =   0.0000
+
+. regress userratio lag_topmover, robust
+
+Linear regression                               Number of obs     =  1,737,406
+                                                F(1, 1737404)     =     333.90
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0048
+                                                Root MSE          =     .25381
+
+------------------------------------------------------------------------------
+             |               Robust
+   userratio | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+lag_topmover |   .2245127   .0122866    18.27   0.000     .2004314     .248594
+       _cons |   1.005283    .000178  5647.05   0.000     1.004934    1.005632
+------------------------------------------------------------------------------
+
 . 
 . ************************************************************
+. * Task 5(h) – Model 3: userchg on lag_topmover + mktcap
+. ************************************************************
 . 
-. * ----h.) Model 3: user change on lagged top mover + market capitalization ----
 . regress userchg lag_topmover mktcap
 
       Source |       SS           df       MS      Number of obs   = 1,742,651
@@ -1441,43 +420,42 @@ lag_topmover |   427.5265    3.12627   136.75   0.000     421.3991    433.6539
        _cons |   4.397488   .2515192    17.48   0.000     3.904519    4.890457
 ------------------------------------------------------------------------------
 
+. estat hettest
+
+Breusch–Pagan/Cook–Weisberg test for heteroskedasticity 
+Assumption: Normal error terms
+Variable: Fitted values of userchg
+
+H0: Constant variance
+
+    chi2(1) = 1.73e+07
+Prob > chi2 =   0.0000
+
+. regress userchg lag_topmover mktcap, robust
+
+Linear regression                               Number of obs     =  1,742,651
+                                                F(2, 1742648)     =     359.72
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0243
+                                                Root MSE          =     324.46
+
+------------------------------------------------------------------------------
+             |               Robust
+     userchg | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+lag_topmover |   427.5265   21.77846    19.63   0.000     384.8415    470.2115
+      mktcap |   .0009128   .0000487    18.76   0.000     .0008175    .0010082
+       _cons |   4.397488   .3960764    11.10   0.000     3.621192    5.173784
+------------------------------------------------------------------------------
+
 . 
-. * Interpretation:
-. * Coefficient on lag_topmover = 427.53
-. *   -> Including market capitalization raises the estimated effect
-. *      from about 420 (Model 1) to roughly 428.
-. * Coefficient on mktcap = 0.00091
-. *   -> Each extra $1 million of market capitalization is associated
-. *      with about 0.9 more RH users per day.
-. * p-values < 0.001 for both predictors
-. *   -> Both effects are highly significant.
-. * 95% confidence interval for lag_topmover = [421.40 , 433.65]
-. *   -> Strong and precise positive effect.
-. 
 . ************************************************************
-. * Economic meaning for Task 5(h)
-. ************************************************************
-. * After controlling for firm size, the effect of being a top mover
-. * becomes larger. This indicates that top movers are on average
-. * smaller than typical firms. The univariate model therefore
-. * underestimated the true effect.
-. * Correct multiple-choice statement:
-. *   (i) The univariate model underestimates the effect of being a
-. *       top mover on the change in RH users. This is because top
-. *       movers are smaller than the average company. -> CORRECT
+. * Task 6 – Feature Launch Interaction Model (Diff-in-Diff)
 . ************************************************************
 . 
-. ************************************************************
-. * Task 6 – Top Movers feature introduction (Aug 1, 2019)
-. ************************************************************
-. 
-. * Define list = 1 on and after August 1, 2019, 0 otherwise
 . gen byte list = date >= mdy(8,1,2019)
 
 . 
-. * Estimate the model:
-. *    userchg = β0 + β1 lag_topmover + β2 list + β3 lag_topmover × list + β4 mktc
-> ap + ε
 . regress userchg lag_topmover list c.lag_topmover#c.list mktcap
 
       Source |       SS           df       MS      Number of obs   = 1,742,651
@@ -1500,22 +478,53 @@ lag_topmover |   427.5265    3.12627   136.75   0.000     421.3991    433.6539
           _cons |  -4.834506   .3459101   -13.98   0.000    -5.512478   -4.156534
 ---------------------------------------------------------------------------------
 
+. estat hettest
+
+Breusch–Pagan/Cook–Weisberg test for heteroskedasticity 
+Assumption: Normal error terms
+Variable: Fitted values of userchg
+
+H0: Constant variance
+
+    chi2(1) = 2.83e+07
+Prob > chi2 =   0.0000
+
+. regress userchg lag_topmover list c.lag_topmover#c.list mktcap, robust
+
+Linear regression                               Number of obs     =  1,742,651
+                                                F(4, 1742646)     =     622.64
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0313
+                                                Root MSE          =     323.29
+
+---------------------------------------------------------------------------------
+                |               Robust
+        userchg | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+----------------+----------------------------------------------------------------
+   lag_topmover |   138.6204   8.622806    16.08   0.000       121.72    155.5208
+           list |      19.03   .4291263    44.35   0.000     18.18893    19.87107
+                |
+ c.lag_topmover#|
+         c.list |   639.9109   47.25208    13.54   0.000     547.2984    732.5233
+                |
+         mktcap |   .0009139   .0000486    18.80   0.000     .0008186    .0010092
+          _cons |  -4.834506   .4341091   -11.14   0.000    -5.685345   -3.983667
+---------------------------------------------------------------------------------
+
 . 
 . ************************************************************
-. * Task 7 – Interpretation
+. * Task 7 – Interpretation Notes (for PDF)
 . ************************************************************
 . 
-. * ---- Notes for interpretation in your PDF ----
 . * β1  = effect of being a lagged top mover BEFORE Aug 1, 2019.
 . * β2  = shift in baseline user change after Aug 1, 2019 (when the list existed).
-. * β3  = additional effect of being a lagged top mover AFTER Aug 1, 2019
-. *       (i.e. the difference-in-differences effect).
+. * β3  = additional effect of being a lagged top mover AFTER Aug 1, 2019.
 . * β4  = effect of market capitalization (in millions) on user change.
-. * Significance is judged by p-value, t-statistic, and 95% confidence interval
-. * as in the previous regressions.
 . 
-. 
-. 
-. 
-end of do-file
-
+. log close
+      name:  <unnamed>
+       log:  /Users/delta/Documents/GitHub/Empirical-Methods-of-Finance-Group-Grou
+> p-Assignment-/Results.log
+  log type:  text
+ closed on:  20 Sep 2025, 05:28:56
+----------------------------------------------------------------------------------

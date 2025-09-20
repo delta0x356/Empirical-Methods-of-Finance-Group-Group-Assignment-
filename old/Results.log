@@ -1,0 +1,45 @@
+----------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  /Users/delta/Documents/GitHub/Empirical-Methods-of-Finance-Group-Grou
+> p-Assignment-/old/Results.log
+  log type:  text
+ opened on:  20 Sep 2025, 05:26:13
+
+. 
+. * 1. Loading data
+. use tic date rh PRC SHROUT using ///
+>     "rh_daily.dta", clear
+file rh_daily.dta not found
+r(601);
+
+end of do-file
+
+r(601);
+
+. do "/Users/delta/Documents/GitHub/Empirical-Methods-of-Finance-Group-Group-Assig
+> nment-/Analysis.do"
+
+. ************************************************************
+. * Assignment for Empirical Methods in Finance – Christoph Herler, Darius Richter
+> , Leonard Hug 22.09.2025
+. ************************************************************
+. 
+. * Start logging
+. log using "Results.log", text replace
+log file already open
+r(604);
+
+end of do-file
+
+r(604);
+
+. do "/Users/delta/Documents/GitHub/Empirical-Methods-of-Finance-Group-Group-Assig
+> nment-/Analysis.do"
+
+. ************************************************************
+. * Assignment for Empirical Methods in Finance – Christoph Herler, Darius Richter
+> , Leonard Hug 22.09.2025
+. ************************************************************
+. 
+. * Start logging
+. capture log close
