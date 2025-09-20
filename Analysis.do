@@ -48,11 +48,10 @@ by year, sort: tabstat rh, statistics(mean sd median n)
 * Task 2(b) – Check which statements are correct
 ************************************************************
 * i. Total number of Robinhood investors in 2018
-*    (sum of rh across all observations in 2018) -> INCORRECT
 summarize rh if year==2018, detail
 display "Total RH investors 2018 = " r(sum)
 
-* ii & iii. Median number of investors in 2020 - ii -> INCORRECT, iii -> CORRECT
+* ii & iii. Median number of investors in 2020
 summarize rh if year==2020, detail
 display "Median number of investors per stock in 2020 = " r(p50)
 
@@ -111,7 +110,8 @@ list date tmcount if tmcount != 20
 ************************************************************
 
 regress userchg lag_topmover
-estat hettest
+estat hettest, iid
+estat imtest, white
 regress userchg lag_topmover, robust
 
 ************************************************************
@@ -119,7 +119,8 @@ regress userchg lag_topmover, robust
 ************************************************************
 
 regress userratio lag_topmover
-estat hettest
+estat hettest, iid
+estat imtest, white
 regress userratio lag_topmover, robust
 
 ************************************************************
@@ -127,7 +128,8 @@ regress userratio lag_topmover, robust
 ************************************************************
 
 regress userchg lag_topmover mktcap
-estat hettest
+estat hettest, iid
+estat imtest, white
 regress userchg lag_topmover mktcap, robust
 
 ************************************************************
@@ -137,7 +139,8 @@ regress userchg lag_topmover mktcap, robust
 gen byte list = date >= mdy(8,1,2019)
 
 regress userchg lag_topmover list c.lag_topmover#c.list mktcap
-estat hettest
+estat hettest, iid
+estat imtest, white
 regress userchg lag_topmover list c.lag_topmover#c.list mktcap, robust
 
 ************************************************************
