@@ -21,10 +21,10 @@ This repository contains code for analyzing attention-driven trading behavior am
 ## Files
 
 ```
-├── Assignment.do                          # Main Stata analysis script (11 KB)
-├── empirical_finance_assignment.log       # Complete analysis output (22 KB)  
-├── rh_daily.dta                          # Robinhood holdings dataset (86.4 MB)
-└── README.md                             # This file
+├── Analysis.do                           # Main Stata analysis script
+├── Results.log                           # Complete analysis output  
+├── rh_daily.dta                         # Robinhood holdings dataset (86.4 MB)
+└── README.md                            # This file
 ```
 
 ## Usage
